@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#7F77DD">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Auto výdaje">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<title>Výdaje automobilu</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg1:#ffffff;--bg2:#f5f5f0;--bg3:#ebebeb;
+  --t1:#1a1a1a;--t2:#666;--t3:#999;
+  --b1:rgba(0,0,0,0.1);--b2:rgba(0,0,0,0.2);--b3:rgba(0,0,0,0.35);
+  --r:8px;--rl:12px;--font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);
+}
+@media(prefers-color-scheme:dark){:root{--bg1:#1e1e1e;--bg2:#2a2a2a;--bg3:#333;--t1:#f0f0f0;--t2:#aaa;--t3:#666;--b1:rgba(255,255,255,0.1);--b2:rgba(255,255,255,0.2);--b3:rgba(255,255,255,0.35);}}
+html,body{height:100%}
+body{font-family:var(--font);background:var(--bg3);color:var(--t1);padding-top:calc(var(--safe-top) + 1rem);padding-bottom:calc(var(--safe-bottom) + 1rem);padding-left:1rem;padding-right:1rem;}
+.container{max-width:680px;margin:0 auto}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;gap:10px;flex-wrap:wrap}
+.topbar h1{font-size:20px;font-weight:500;color:var(--t1);white-space:nowrap}
+.car-switcher{display:flex;align-items:center;gap:8px}
+.car-select{font-family:var(--font);font-size:14px;padding:6px 10px;border-radius:var(--r);border:0.5px solid var(--b2);background:var(--bg2);color:var(--t1);outline:none;max-width:180px;-webkit-appearance:none}
+.btn-newcar{padding:6px 12px;border-radius:var(--r);border:0.5px solid var(--b2);background:transparent;font-size:13px;color:var(--t2);cursor:pointer;font-family:var(--font);white-space:nowrap}
+.btn-newcar:hover{background:var(--bg2)}
+.tabs{display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap}
+.tab{padding:8px 16px;border-radius:var(--r);border:0.5px solid var(--b2);background:transparent;font-size:14px;color:var(--t2);cursor:pointer;transition:all 0.15s;font-family:var(--font)}
+.tab.active{background:var(--bg2);color:var(--t1);border-color:var(--b3);font-weight:500}
+.section{display:none}.section.active{display:block}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.5rem}
+.card{background:var(--bg2);border-radius:var(--r);padding:12px 14px}
+.card.hcard{border:0.5px solid var(--b2)}
+.card-label{font-size:12px;color:var(--t2);margin-bottom:4px}
+.card-value{font-size:19px;font-weight:500;color:var(--t1)}
+.card-sub{font-size:11px;color:var(--t3);margin-top:2px}
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+@media(max-width:500px){.charts-row{grid-template-columns:1fr}}
+.chart-box{background:var(--bg2);border-radius:var(--r);padding:14px}
+.chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:6px;flex-wrap:wrap}
+.stitle{font-size:13px;color:var(--t2);margin-bottom:10px}
+.tgroup{display:flex;border-radius:20px;overflow:hidden;border:0.5px solid var(--b2);flex-shrink:0}
+.tbtn{padding:3px 11px;font-size:11px;border:none;background:transparent;color:var(--t2);cursor:pointer;font-family:var(--font);line-height:1.8;white-space:nowrap;transition:all 0.12s}
+.tbtn.active{background:var(--bg1);color:var(--t1);font-weight:500}
+.tbtn:disabled{opacity:0.4;cursor:default}
+.legend{display:flex;flex-wrap:wrap;gap:5px 10px;margin-top:10px}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t2)}
+.ldot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.km-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:1.5rem}
+.km-table th{text-align:left;font-weight:500;font-size:12px;color:var(--t2);padding:6px 8px;border-bottom:0.5px solid var(--b1)}
+.km-table td{padding:8px;border-bottom:0.5px solid var(--b1);color:var(--t1);vertical-align:middle}
+.km-table tbody tr.data-row{cursor:pointer}
+.km-table tbody tr.data-row:hover td{background:var(--bg2)}
+.expand-btn{display:inline-flex;align-items:center;gap:5px;cursor:pointer;background:none;border:none;font-family:var(--font);font-size:13px;color:var(--t1);padding:0;text-align:left;width:100%}
+.expand-arrow{font-size:9px;color:var(--t3);transition:transform 0.2s;flex-shrink:0;display:inline-block}
+.expand-arrow.open{transform:rotate(90deg)}
+.detail-row td{padding:0!important;border-bottom:0.5px solid var(--b1)!important}
+.detail-inner{overflow:hidden;max-height:0;transition:max-height 0.3s ease}
+.detail-inner.open{max-height:1000px}
+.detail-list{padding:6px 8px 12px 28px;display:flex;flex-direction:column;gap:5px;background:var(--bg1)}
+.detail-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2);padding:3px 0}
+.detail-item-icon{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.detail-item-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.detail-item-amount{font-weight:500;color:var(--t1);white-space:nowrap;margin-left:8px}
+.history{display:flex;flex-direction:column;gap:8px}
+.entry{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg1);border:0.5px solid var(--b1);border-radius:var(--r)}
+.entry-icon{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.entry-info{flex:1;min-width:0}
+.entry-name{font-size:14px;font-weight:500;color:var(--t1)}
+.entry-meta{font-size:11px;color:var(--t3)}
+.entry-note{font-size:11px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry-amount{font-size:14px;font-weight:500;color:var(--t1);white-space:nowrap}
+.entry-del{background:none;border:none;color:var(--t3);cursor:pointer;font-size:20px;padding:2px 4px;flex-shrink:0;line-height:1}
+.entry-del:hover{color:#c0392b}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg.full{grid-column:1/-1}
+label{font-size:13px;color:var(--t2)}
+input,select,textarea{font-family:var(--font);font-size:16px;padding:10px 12px;border-radius:var(--r);border:0.5px solid var(--b2);background:var(--bg1);color:var(--t1);outline:none;width:100%;-webkit-appearance:none}
+input:focus,select:focus,textarea:focus{border-color:var(--b3)}
+textarea{resize:vertical;min-height:56px;font-size:15px}
+.btnadd{width:100%;padding:12px;border-radius:var(--r);border:0.5px solid var(--b2);background:var(--bg2);font-size:15px;font-weight:500;color:var(--t1);cursor:pointer;font-family:var(--font)}
+.btnadd:hover{background:var(--bg3)}
+.empty{text-align:center;color:var(--t3);font-size:14px;padding:2rem 0}
+.frow{display:flex;gap:8px;align-items:center;margin-bottom:1rem;font-size:13px;color:var(--t2)}
+.frow select{font-size:13px;width:auto}
+.asetup{background:var(--bg2);border-radius:var(--rl);padding:1rem 1.25rem;margin-bottom:1rem}
+.asetup-title{font-size:14px;font-weight:500;color:var(--t1);margin-bottom:12px}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sgrid .fg.full{grid-column:1/-1}
+.btnsave{margin-top:8px;padding:10px 20px;border-radius:var(--r);border:0.5px solid var(--b2);background:var(--bg1);font-size:14px;font-weight:500;color:var(--t1);cursor:pointer;font-family:var(--font)}
+.btnsave:hover{background:var(--bg3)}
+.btn-danger{margin-top:8px;margin-left:8px;padding:10px 20px;border-radius:var(--r);border:0.5px solid rgba(192,57,43,0.4);background:transparent;font-size:14px;color:#c0392b;cursor:pointer;font-family:var(--font)}
+.btn-danger:hover{background:rgba(192,57,43,0.06)}
+.banner{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg2);border-radius:var(--r);margin-bottom:1.25rem;border:0.5px solid var(--b1)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100;align-items:center;justify-content:center;padding:1rem}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg1);border-radius:var(--rl);padding:1.5rem;width:100%;max-width:360px;border:0.5px solid var(--b2)}
+.modal h2{font-size:16px;font-weight:500;margin-bottom:1rem;color:var(--t1)}
+.modal-btns{display:flex;gap:8px;margin-top:1rem;justify-content:flex-end}
+.modal-btns button{padding:8px 16px;border-radius:var(--r);border:0.5px solid var(--b2);background:var(--bg2);font-size:14px;color:var(--t1);cursor:pointer;font-family:var(--font)}
+.modal-btns .btn-primary{background:var(--t1);color:var(--bg1);border-color:var(--t1)}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="topbar">
+  <h1>Výdaje automobilu</h1>
+  <div class="car-switcher">
+    <select class="car-select" id="car-select" onchange="switchCar(this.value)"></select>
+    <button class="btn-newcar" onclick="openNewCarModal()">+ Auto</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-tab="prehled" onclick="showTab('prehled')">Přehled</button>
+  <button class="tab" data-tab="naklady" onclick="showTab('naklady')">Náklady na km</button>
+  <button class="tab" data-tab="pridat" onclick="showTab('pridat')">Přidat výdaj</button>
+  <button class="tab" data-tab="historie" onclick="showTab('historie')">Historie</button>
+  <button class="tab" data-tab="nastaveni" onclick="showTab('nastaveni')">Auto</button>
+</div>
+
+<div id="prehled" class="section active">
+  <div id="auto-banner"></div>
+  <div class="cards" id="sum-cards"></div>
+  <div class="charts-row">
+    <div class="chart-box">
+      <div class="chart-header">
+        <div class="stitle" style="margin:0">Výdaje podle kategorie</div>
+        <div class="tgroup">
+          <button class="tbtn active" id="tbez" onclick="setPie('bez')">Bez pořízení</button>
+          <button class="tbtn" id="ts" onclick="setPie('s')">S pořízením</button>
+        </div>
+      </div>
+      <div style="position:relative;height:180px;margin-top:10px"><canvas id="catPie"></canvas></div>
+      <div class="legend" id="cat-legend"></div>
+    </div>
+    <div class="chart-box">
+      <div class="stitle">Posledních 6 měsíců</div>
+      <div style="position:relative;height:180px"><canvas id="monthBar"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-box" id="km-line-box" style="margin-bottom:1.5rem">
+    <div class="stitle">Vývoj km stavu</div>
+    <div style="position:relative;height:160px"><canvas id="kmLine"></canvas></div>
+  </div>
+</div>
+
+<div id="naklady" class="section">
+  <div class="cards" id="km-cards"></div>
+  <div id="tco-box" style="margin-bottom:1.5rem"></div>
+  <div class="stitle">Cena provozu na km — měsíčně</div>
+  <table class="km-table"><thead><tr><th>Měsíc</th><th>Výdaje</th><th>Najeto</th><th>Kč / km</th></tr></thead><tbody id="km-monthly-body"></tbody></table>
+  <div class="stitle" style="margin-top:1rem">Cena provozu na km — ročně</div>
+  <table class="km-table"><thead><tr><th>Rok</th><th>Výdaje</th><th>Najeto</th><th>Kč / km</th></tr></thead><tbody id="km-yearly-body"></tbody></table>
+</div>
+
+<div id="pridat" class="section">
+  <div class="fgrid">
+    <div class="fg"><label>Kategorie</label>
+      <select id="f-cat">
+        <option>Tankování</option><option>Servis</option><option>Pneumatiky</option>
+        <option>Pojištění</option><option>Dálniční známka</option><option>Mytí</option>
+        <option>Parkování</option><option>Ostatní</option>
+      </select>
+    </div>
+    <div class="fg"><label>Částka (Kč)</label><input type="number" id="f-amount" placeholder="0" min="0" step="1" inputmode="numeric"></div>
+    <div class="fg"><label>Datum</label><input type="date" id="f-date"></div>
+    <div class="fg"><label>Km stav (volitelné)</label><input type="number" id="f-km" placeholder="např. 85000" inputmode="numeric"></div>
+    <div class="fg full"><label>Poznámka (volitelné)</label><textarea id="f-note" placeholder="např. Výměna oleje + filtr..."></textarea></div>
+  </div>
+  <button class="btnadd" onclick="addEntry()">Přidat výdaj</button>
+  <div id="form-msg" style="margin-top:10px;font-size:13px"></div>
+</div>
+
+<div id="historie" class="section">
+  <div class="frow"><span>Filtr:</span>
+    <select id="hist-filter" onchange="renderHistory()"><option value="all">Vše</option></select>
+  </div>
+  <div class="history" id="history-list"></div>
+</div>
+
+<div id="nastaveni" class="section">
+  <div class="asetup">
+    <div class="asetup-title">Údaje o vozidle</div>
+    <div class="sgrid">
+      <div class="fg full"><label>Název / SPZ</label><input type="text" id="s-name" placeholder="např. Škoda Octavia 2.0 TDI"></div>
+      <div class="fg"><label>Rok výroby</label><input type="number" id="s-year" placeholder="např. 2021" inputmode="numeric"></div>
+      <div class="fg"><label>Pořizovací cena (Kč)</label><input type="number" id="s-price" placeholder="např. 450000" inputmode="numeric"></div>
+      <div class="fg"><label>Datum pořízení</label><input type="date" id="s-buydate"></div>
+      <div class="fg"><label>Km při pořízení</label><input type="number" id="s-kmstart" placeholder="např. 0" inputmode="numeric"></div>
+    </div>
+    <button class="btnsave" onclick="saveAuto()">Uložit změny</button>
+    <button class="btn-danger" onclick="deleteCar()">Smazat auto</button>
+    <div id="auto-msg" style="margin-top:8px;font-size:13px"></div>
+  </div>
+</div>
+
+</div>
+
+<!-- Modal: nové auto -->
+<div class="modal-overlay" id="new-car-modal">
+  <div class="modal">
+    <h2>Přidat nové auto</h2>
+    <div class="fg" style="margin-bottom:10px"><label>Název / SPZ</label><input type="text" id="nc-name" placeholder="např. VW Golf 1.6 TDI"></div>
+    <div class="fg"><label>Rok výroby (volitelné)</label><input type="number" id="nc-year" placeholder="např. 2019" inputmode="numeric"></div>
+    <div class="modal-btns">
+      <button onclick="closeNewCarModal()">Zrušit</button>
+      <button class="btn-primary" onclick="createCar()">Vytvořit</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+
+const CATS={"Tankování":{emoji:"⛽",color:"#378ADD"},"Servis":{emoji:"🔧",color:"#D85A30"},"Pneumatiky":{emoji:"🔘",color:"#7F77DD"},"Pojištění":{emoji:"🛡",color:"#1D9E75"},"Dálniční známka":{emoji:"🛣",color:"#BA7517"},"Mytí":{emoji:"🫧",color:"#D4537E"},"Parkování":{emoji:"🅿",color:"#888780"},"Ostatní":{emoji:"📋",color:"#5DCAA5"}};
+
+function loadState(){try{return JSON.parse(localStorage.getItem('app_state')||'null');}catch(e){return null;}}
+function saveState(){try{localStorage.setItem('app_state',JSON.stringify(appState));}catch(e){}}
+
+let appState=loadState();
+if(!appState){
+  const id='car_'+Date.now();
+  appState={activeCar:id,cars:{[id]:{id,info:{name:'Moje auto',year:null,price:null,buydate:null,kmstart:null},data:[],nextId:1}}};
+  saveState();
+}
+
+function getCar(){return appState.cars[appState.activeCar];}
+function getData(){return getCar().data;}
+function getAi(){return getCar().info;}
+
+let catChart=null,monthChart=null,kmLineChart=null,pieMode='bez',expandedRows={};
+
+function fmt(n){return Math.round(n).toLocaleString('cs-CZ')+' Kč';}
+function fmtK(n){return n.toFixed(2).replace('.',',')+' Kč/km';}
+
+function renderCarSelect(){
+  const sel=document.getElementById('car-select');
+  sel.innerHTML=Object.values(appState.cars).map(c=>`<option value="${c.id}"${c.id===appState.activeCar?' selected':''}>${c.info.name||'Auto'}</option>`).join('');
+}
+
+function switchCar(id){
+  if(!appState.cars[id])return;
+  appState.activeCar=id;expandedRows={};saveState();
+  destroyCharts();renderCarSelect();
+  const activeTab=document.querySelector('.tab.active')?.dataset.tab||'prehled';
+  showTab(activeTab);
+}
+
+function openNewCarModal(){document.getElementById('new-car-modal').classList.add('open');document.getElementById('nc-name').focus();}
+function closeNewCarModal(){document.getElementById('new-car-modal').classList.remove('open');document.getElementById('nc-name').value='';document.getElementById('nc-year').value='';}
+
+function createCar(){
+  const name=document.getElementById('nc-name').value.trim()||'Nové auto';
+  const year=parseInt(document.getElementById('nc-year').value)||null;
+  const id='car_'+Date.now();
+  appState.cars[id]={id,info:{name,year,price:null,buydate:null,kmstart:null},data:[],nextId:1};
+  appState.activeCar=id;saveState();closeNewCarModal();
+  expandedRows={};destroyCharts();renderCarSelect();showTab('nastaveni');
+}
+
+function deleteCar(){
+  if(Object.keys(appState.cars).length<=1){alert('Nelze smazat poslední auto.');return;}
+  if(!confirm(`Opravdu smazat "${getAi().name||'toto auto'}" a všechny jeho záznamy?`))return;
+  delete appState.cars[appState.activeCar];
+  appState.activeCar=Object.keys(appState.cars)[0];
+  saveState();expandedRows={};destroyCharts();renderCarSelect();showTab('prehled');
+}
+
+function destroyCharts(){
+  if(catChart){catChart.destroy();catChart=null;}
+  if(monthChart){monthChart.destroy();monthChart=null;}
+  if(kmLineChart){kmLineChart.destroy();kmLineChart=null;}
+}
+
+function showTab(t){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(t).classList.add('active');
+  if(t==='prehled')renderPrehled();
+  if(t==='naklady')renderNaklady();
+  if(t==='historie')renderHistory();
+  if(t==='nastaveni')fillNastaveni();
+}
+
+function setPie(mode){
+  pieMode=mode;
+  document.getElementById('tbez').classList.toggle('active',mode==='bez');
+  document.getElementById('ts').classList.toggle('active',mode==='s');
+  updatePie();
+}
+
+function updatePie(){
+  const data=getData(),ai=getAi(),tots={};
+  data.forEach(e=>{tots[e.cat]=(tots[e.cat]||0)+e.amount;});
+  if(pieMode==='s'&&ai&&ai.price)tots['Pořizovací cena']=ai.price;
+  const colorMap={...Object.fromEntries(Object.entries(CATS).map(([k,v])=>[k,v.color])),'Pořizovací cena':'#444441'};
+  const keys=Object.keys(tots).sort((a,b)=>tots[b]-tots[a]);
+  const colors=keys.map(k=>colorMap[k]||'#888780');
+  const vals=keys.map(k=>tots[k]);
+  const total=vals.reduce((a,b)=>a+b,0);
+  if(!total){document.getElementById('cat-legend').innerHTML='<span style="font-size:12px;color:var(--t3)">Zatím žádné záznamy</span>';if(catChart){catChart.destroy();catChart=null;}return;}
+  if(catChart){
+    catChart.data.labels=keys;catChart.data.datasets[0].data=vals;catChart.data.datasets[0].backgroundColor=colors;catChart.update('none');
+  } else {
+    catChart=new Chart(document.getElementById('catPie'),{
+      type:'doughnut',
+      data:{labels:keys,datasets:[{data:vals,backgroundColor:colors,borderWidth:2,borderColor:'transparent'}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:'58%',animation:{duration:300},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${fmt(c.raw)} (${Math.round(c.raw/total*100)}%)`}}}}
+    });
+  }
+  document.getElementById('cat-legend').innerHTML=keys.map((k,i)=>`<span class="legend-item"><span class="ldot" style="background:${colors[i]}"></span>${k} ${Math.round(vals[i]/total*100)}%</span>`).join('');
+  document.getElementById('ts').disabled=!(ai&&ai.price);
+}
+
+function renderPrehled(){
+  const data=getData(),ai=getAi();
+  const banner=document.getElementById('auto-banner');
+  if(ai&&ai.name){
+    const age=ai.buydate?Math.floor((new Date()-new Date(ai.buydate))/(1000*60*60*24*365.25)*10)/10:null;
+    banner.innerHTML=`<div class="banner"><span style="font-size:22px">🚗</span><div><div style="font-size:14px;font-weight:500;color:var(--t1)">${ai.name}${ai.year?' ('+ai.year+')':''}</div><div style="font-size:12px;color:var(--t3)">${ai.price?'Pořizovací cena: '+fmt(ai.price):''}${ai.price&&age?' · ':''}${age?'Vlastním '+age+' let':''}</div></div></div>`;
+  } else banner.innerHTML='';
+
+  const now=new Date(),tm=now.getMonth(),ty=now.getFullYear();
+  const me=data.filter(e=>{const d=new Date(e.date);return d.getMonth()===tm&&d.getFullYear()===ty;});
+  const total=data.reduce((a,e)=>a+e.amount,0);
+  const fe=data.filter(e=>e.cat==="Tankování");
+  const avgFuel=fe.length?Math.round(fe.reduce((a,e)=>a+e.amount,0)/fe.length):0;
+  let ch=`<div class="card"><div class="card-label">Provozní výdaje</div><div class="card-value">${fmt(total)}</div><div class="card-sub">${data.length} záznamů</div></div>
+    <div class="card"><div class="card-label">Tento měsíc</div><div class="card-value">${fmt(me.reduce((a,e)=>a+e.amount,0))}</div><div class="card-sub">${me.length} výdajů</div></div>
+    <div class="card"><div class="card-label">Průměrné tankování</div><div class="card-value">${fmt(avgFuel)}</div><div class="card-sub">${fe.length} tankovacích</div></div>`;
+  if(ai&&ai.price)ch+=`<div class="card hcard"><div class="card-label">Celkem vč. pořízení</div><div class="card-value">${fmt(total+ai.price)}</div><div class="card-sub">vůz ${fmt(ai.price)}</div></div>`;
+  document.getElementById('sum-cards').innerHTML=ch;
+
+  destroyCharts();
+  updatePie();
+
+  const months=[];
+  for(let i=5;i>=0;i--){const d=new Date(ty,tm-i,1);const mo=d.getMonth();const y=d.getFullYear();const sum=data.filter(e=>{const dd=new Date(e.date);return dd.getMonth()===mo&&dd.getFullYear()===y;}).reduce((a,e)=>a+e.amount,0);months.push({label:d.toLocaleDateString('cs-CZ',{month:'short',year:'2-digit'}),sum});}
+  monthChart=new Chart(document.getElementById('monthBar'),{
+    type:'bar',
+    data:{labels:months.map(m=>m.label),datasets:[{data:months.map(m=>m.sum),backgroundColor:'#7F77DD',borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)}}},scales:{x:{grid:{display:false},ticks:{font:{size:11},autoSkip:false}},y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:11},callback:v=>Math.round(v/1000)+'k'}}}}
+  });
+
+  const kmPts=[...data].filter(e=>e.km!=null).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const kmBox=document.getElementById('km-line-box');
+  if(kmPts.length>=2){
+    kmBox.innerHTML='<div class="stitle">Vývoj km stavu</div><div style="position:relative;height:160px"><canvas id="kmLine"></canvas></div>';
+    kmLineChart=new Chart(document.getElementById('kmLine'),{
+      type:'line',
+      data:{
+        labels:kmPts.map(e=>new Date(e.date).toLocaleDateString('cs-CZ',{day:'numeric',month:'short',year:'2-digit'})),
+        datasets:[{data:kmPts.map(e=>e.km),borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',borderWidth:2,pointRadius:3,pointBackgroundColor:'#1D9E75',fill:true,tension:0.3}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toLocaleString('cs-CZ')+' km'}}},scales:{x:{grid:{display:false},ticks:{font:{size:10},maxTicksLimit:7,maxRotation:0}},y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:11},callback:v=>Math.round(v/1000)+'k km'}}}}
+    });
+  } else {
+    kmBox.innerHTML='<div class="stitle">Vývoj km stavu</div><div class="empty" style="padding:1rem 0">Zadej alespoň 2 záznamy s km stavem</div>';
+  }
+}
+
+function getKmData(){return [...getData()].filter(e=>e.km!=null).sort((a,b)=>new Date(a.date)-new Date(b.date));}
+
+function toggleExpandRow(key){
+  expandedRows[key]=!expandedRows[key];
+  const arrow=document.getElementById('arr-'+key);
+  const detail=document.getElementById('det-'+key);
+  if(arrow)arrow.classList.toggle('open',!!expandedRows[key]);
+  if(detail)detail.classList.toggle('open',!!expandedRows[key]);
+}
+
+function buildDetailHtml(entries){
+  if(!entries.length)return'<div style="font-size:12px;color:var(--t3)">Žádné záznamy</div>';
+  return entries.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(e=>{
+    const c=CATS[e.cat]||{emoji:'📋',color:'#888780'};
+    const d=new Date(e.date).toLocaleDateString('cs-CZ',{day:'numeric',month:'short'});
+    return`<div class="detail-item"><div class="detail-item-icon" style="background:${c.color}22;border:0.5px solid ${c.color}55">${c.emoji}</div><div class="detail-item-name">${e.cat} <span style="color:var(--t3)">${d}${e.note?' · '+e.note:''}</span></div><div class="detail-item-amount">${fmt(e.amount)}</div></div>`;
+  }).join('');
+}
+
+function makeExpandRows(key,label,sp,dist,entries){
+  const cpk=dist>0?sp/dist:null;
+  const isOpen=!!expandedRows[key];
+  return`<tr class="data-row" onclick="toggleExpandRow('${key}')">
+    <td>${label}</td>
+    <td><button class="expand-btn"><span class="expand-arrow${isOpen?' open':''}" id="arr-${key}">▶</span>&nbsp;${fmt(sp)}</button></td>
+    <td>${dist>0?dist.toLocaleString('cs-CZ')+' km':'—'}</td>
+    <td style="font-weight:500">${cpk?fmtK(cpk):'—'}</td>
+  </tr>
+  <tr class="detail-row"><td colspan="4"><div class="detail-inner${isOpen?' open':''}" id="det-${key}"><div class="detail-list">${buildDetailHtml(entries)}</div></div></td></tr>`;
+}
+
+function renderNaklady(){
+  const data=getData(),ai=getAi(),kd=getKmData();
+  if(kd.length<2){
+    document.getElementById('km-cards').innerHTML='<div class="empty">Pro výpočet ceny na km zadej alespoň 2 záznamy s km stavem.</div>';
+    document.getElementById('tco-box').innerHTML='';
+    document.getElementById('km-monthly-body').innerHTML='';
+    document.getElementById('km-yearly-body').innerHTML='';
+    return;
+  }
+  const fkm=kd[0].km,lkm=kd[kd.length-1].km,tkm=lkm-fkm;
+  const tsp=data.reduce((a,e)=>a+e.amount,0),cpk=tkm>0?tsp/tkm:0;
+  const now=new Date(),tm=now.getMonth(),ty=now.getFullYear();
+  const msp=data.filter(e=>{const d=new Date(e.date);return d.getMonth()===tm&&d.getFullYear()===ty;}).reduce((a,e)=>a+e.amount,0);
+  const mkp=kd.filter(e=>{const d=new Date(e.date);return d.getMonth()===tm&&d.getFullYear()===ty;});
+  let mkd=0;
+  if(mkp.length>=2)mkd=mkp[mkp.length-1].km-mkp[0].km;
+  else if(mkp.length===1){const idx=kd.indexOf(mkp[0]);if(idx>0)mkd=mkp[0].km-kd[idx-1].km;}
+  document.getElementById('km-cards').innerHTML=`
+    <div class="card"><div class="card-label">Celkem najeto</div><div class="card-value">${tkm.toLocaleString('cs-CZ')} km</div><div class="card-sub">${fkm.toLocaleString('cs-CZ')} → ${lkm.toLocaleString('cs-CZ')} km</div></div>
+    <div class="card"><div class="card-label">Provoz / km</div><div class="card-value">${fmtK(cpk)}</div><div class="card-sub">bez pořizovací ceny</div></div>
+    <div class="card"><div class="card-label">Tento měsíc / km</div><div class="card-value">${mkd>0?fmtK(msp/mkd):'—'}</div><div class="card-sub">${mkd>0?mkd.toLocaleString('cs-CZ')+' km':'-'} najeto</div></div>`;
+  if(ai&&ai.price&&tkm>0){
+    const kso=ai.kmstart!=null?lkm-ai.kmstart:tkm,twc=tsp+ai.price,cpkwc=kso>0?twc/kso:0;
+    document.getElementById('tco-box').innerHTML=`<div style="background:var(--bg2);border-radius:var(--r);padding:14px;border:0.5px solid var(--b2)"><div style="font-size:13px;color:var(--t2);margin-bottom:10px">Celkové náklady vlastnictví (TCO)</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px"><div><div style="font-size:11px;color:var(--t3)">Pořizovací cena</div><div style="font-size:16px;font-weight:500;color:var(--t1)">${fmt(ai.price)}</div></div><div><div style="font-size:11px;color:var(--t3)">Provozní výdaje</div><div style="font-size:16px;font-weight:500;color:var(--t1)">${fmt(tsp)}</div></div><div><div style="font-size:11px;color:var(--t3)">Celkem (TCO)</div><div style="font-size:16px;font-weight:500;color:var(--t1)">${fmt(twc)}</div></div><div><div style="font-size:11px;color:var(--t3)">TCO / km</div><div style="font-size:16px;font-weight:500;color:var(--t1)">${fmtK(cpkwc)}</div><div style="font-size:11px;color:var(--t3)">${kso.toLocaleString('cs-CZ')} km od pořízení</div></div></div></div>`;
+  } else document.getElementById('tco-box').innerHTML='';
+
+  const mm={},kmm={};
+  data.forEach(e=>{const k=e.date.slice(0,7);mm[k]=(mm[k]||0)+e.amount;});
+  for(let i=1;i<kd.length;i++){const p=kd[i-1],c=kd[i];kmm[c.date.slice(0,7)]=(kmm[c.date.slice(0,7)]||0)+(c.km-p.km);}
+  document.getElementById('km-monthly-body').innerHTML=Object.keys(mm).sort().reverse().map(k=>
+    makeExpandRows('m_'+k, new Date(k+'-01').toLocaleDateString('cs-CZ',{month:'long',year:'numeric'}), mm[k]||0, kmm[k]||0, data.filter(e=>e.date.startsWith(k)))
+  ).join('');
+
+  const ym={},ykm={};
+  data.forEach(e=>{const y=e.date.slice(0,4);ym[y]=(ym[y]||0)+e.amount;});
+  for(let i=1;i<kd.length;i++){const p=kd[i-1],c=kd[i];ykm[c.date.slice(0,4)]=(ykm[c.date.slice(0,4)]||0)+(c.km-p.km);}
+  document.getElementById('km-yearly-body').innerHTML=Object.keys(ym).sort().reverse().map(y=>
+    makeExpandRows('y_'+y, y, ym[y]||0, ykm[y]||0, data.filter(e=>e.date.startsWith(y)))
+  ).join('');
+}
+
+function addEntry(){
+  const car=getCar();
+  const cat=document.getElementById('f-cat').value,amount=parseInt(document.getElementById('f-amount').value),date=document.getElementById('f-date').value;
+  const km=document.getElementById('f-km').value?parseInt(document.getElementById('f-km').value):null;
+  const note=document.getElementById('f-note').value.trim(),msg=document.getElementById('form-msg');
+  if(!amount||amount<=0){msg.style.color='#c0392b';msg.textContent='Zadejte platnou částku.';return;}
+  if(!date){msg.style.color='#c0392b';msg.textContent='Zadejte datum.';return;}
+  car.data.unshift({id:car.nextId++,cat,amount,date,km,note});saveState();
+  document.getElementById('f-amount').value='';document.getElementById('f-km').value='';document.getElementById('f-note').value='';
+  msg.style.color='#1B5E20';msg.textContent='Výdaj přidán!';setTimeout(()=>{msg.textContent='';},2000);
+}
+
+function renderHistory(){
+  const data=getData(),sel=document.getElementById('hist-filter');
+  const months=[...new Set(data.map(e=>e.date.slice(0,7)))].sort().reverse();
+  const cur=sel.value;
+  sel.innerHTML='<option value="all">Vše</option>'+months.map(m=>`<option value="${m}"${m===cur?' selected':''}>${new Date(m+'-01').toLocaleDateString('cs-CZ',{month:'long',year:'numeric'})}</option>`).join('');
+  sel.value=cur;
+  const filtered=cur==='all'?data:data.filter(e=>e.date.startsWith(cur));
+  const el=document.getElementById('history-list');
+  if(!filtered.length){el.innerHTML='<div class="empty">Zatím žádné záznamy</div>';return;}
+  el.innerHTML=filtered.map(e=>{
+    const c=CATS[e.cat]||{emoji:'📋',color:'#888780'};
+    const d=new Date(e.date).toLocaleDateString('cs-CZ',{day:'numeric',month:'short',year:'numeric'});
+    return`<div class="entry"><div class="entry-icon" style="background:${c.color}22;border:0.5px solid ${c.color}66">${c.emoji}</div><div class="entry-info"><div class="entry-name">${e.cat}</div><div class="entry-meta">${d}${e.km?' · '+e.km.toLocaleString('cs-CZ')+' km':''}</div>${e.note?`<div class="entry-note">${e.note}</div>`:''}</div><div class="entry-amount">${fmt(e.amount)}</div><button class="entry-del" onclick="deleteEntry(${e.id})" title="Smazat">×</button></div>`;
+  }).join('');
+}
+
+function deleteEntry(id){if(!confirm('Smazat tento záznam?'))return;getCar().data=getCar().data.filter(e=>e.id!==id);saveState();renderHistory();}
+
+function fillNastaveni(){
+  const ai=getAi();
+  document.getElementById('s-name').value=ai.name||'';
+  document.getElementById('s-year').value=ai.year||'';
+  document.getElementById('s-price').value=ai.price||'';
+  document.getElementById('s-buydate').value=ai.buydate||'';
+  document.getElementById('s-kmstart').value=ai.kmstart!=null?ai.kmstart:'';
+}
+
+function saveAuto(){
+  getCar().info={name:document.getElementById('s-name').value.trim(),year:parseInt(document.getElementById('s-year').value)||null,price:parseInt(document.getElementById('s-price').value)||null,buydate:document.getElementById('s-buydate').value||null,kmstart:document.getElementById('s-kmstart').value!==''?parseInt(document.getElementById('s-kmstart').value):null};
+  saveState();renderCarSelect();
+  const msg=document.getElementById('auto-msg');msg.style.color='#1B5E20';msg.textContent='Uloženo!';setTimeout(()=>{msg.textContent='';},2000);
+}
+
+document.getElementById('f-date').value=new Date().toISOString().slice(0,10);
+renderCarSelect();
+renderPrehled();
+</script>
+</body>
+</html>
