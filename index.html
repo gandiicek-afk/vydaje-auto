@@ -51,7 +51,8 @@ body{font-family:var(--font);background:var(--bg3);color:var(--t1);padding-top:c
 .legend{display:flex;flex-wrap:wrap;gap:5px 10px;margin-top:10px}
 .legend-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t2)}
 .ldot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
-.km-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:1.5rem}
+.km-table-wrap{overflow-x:auto;margin-bottom:1.5rem}
+.km-table{width:100%;border-collapse:collapse;font-size:13px;min-width:480px}
 .km-table th{text-align:left;font-weight:500;font-size:12px;color:var(--t2);padding:6px 8px;border-bottom:0.5px solid var(--b1)}
 .km-table td{padding:8px;border-bottom:0.5px solid var(--b1);color:var(--t1);vertical-align:middle}
 .km-table tbody tr.data-row{cursor:pointer}
@@ -156,9 +157,9 @@ textarea{resize:vertical;min-height:56px;font-size:15px}
   <div class="cards" id="km-cards"></div>
   <div id="tco-box" style="margin-bottom:1.5rem"></div>
   <div class="stitle">Cena provozu na km — měsíčně</div>
-  <table class="km-table"><thead><tr><th>Měsíc</th><th>Výdaje</th><th>Najeto</th><th>Kč / km</th></tr></thead><tbody id="km-monthly-body"></tbody></table>
+  <div class="km-table-wrap"><table class="km-table"><thead><tr><th>Měsíc</th><th>Výdaje</th><th>Najeto</th><th>Palivo/km</th><th>Ostatní/km</th><th>Celkem/km</th></tr></thead><tbody id="km-monthly-body"></tbody></table></div>
   <div class="stitle" style="margin-top:1rem">Cena provozu na km — ročně</div>
-  <table class="km-table"><thead><tr><th>Rok</th><th>Výdaje</th><th>Najeto</th><th>Kč / km</th></tr></thead><tbody id="km-yearly-body"></tbody></table>
+  <div class="km-table-wrap"><table class="km-table"><thead><tr><th>Rok</th><th>Výdaje</th><th>Najeto</th><th>Palivo/km</th><th>Ostatní/km</th><th>Celkem/km</th></tr></thead><tbody id="km-yearly-body"></tbody></table></div>
 </div>
 
 <div id="pridat" class="section">
@@ -166,8 +167,8 @@ textarea{resize:vertical;min-height:56px;font-size:15px}
     <div class="fg"><label>Kategorie</label>
       <select id="f-cat">
         <option>Tankování</option><option>Servis</option><option>Pneumatiky</option>
-        <option>Pojištění</option><option>Dálniční známka</option><option>Mytí</option>
-        <option>Parkování</option><option>Ostatní</option>
+        <option>Pojištění</option><option>STK</option><option>Dálniční známka</option>
+        <option>Mytí</option><option>Parkování</option><option>Ostatní</option>
       </select>
     </div>
     <div class="fg"><label>Částka (Kč)</label><input type="number" id="f-amount" placeholder="0" min="0" step="1" inputmode="numeric"></div>
@@ -187,6 +188,15 @@ textarea{resize:vertical;min-height:56px;font-size:15px}
 </div>
 
 <div id="nastaveni" class="section">
+  <div class="asetup">
+    <div class="asetup-title">Záloha dat</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btnsave" onclick="exportData()">Exportovat zálohu</button>
+      <button class="btnsave" onclick="document.getElementById('import-file').click()">Importovat zálohu</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+    <div style="font-size:12px;color:var(--t3);margin-top:8px">Export uloží všechna auta a záznamy do JSON souboru. Import přepíše všechna stávající data.</div>
+  </div>
   <div class="asetup">
     <div class="asetup-title">Údaje o vozidle</div>
     <div class="sgrid">
@@ -223,7 +233,7 @@ if('serviceWorker' in navigator){
   window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 }
 
-const CATS={"Tankování":{emoji:"⛽",color:"#378ADD"},"Servis":{emoji:"🔧",color:"#D85A30"},"Pneumatiky":{emoji:"🔘",color:"#7F77DD"},"Pojištění":{emoji:"🛡",color:"#1D9E75"},"Dálniční známka":{emoji:"🛣",color:"#BA7517"},"Mytí":{emoji:"🫧",color:"#D4537E"},"Parkování":{emoji:"🅿",color:"#888780"},"Ostatní":{emoji:"📋",color:"#5DCAA5"}};
+const CATS={"Tankování":{emoji:"⛽",color:"#378ADD"},"Servis":{emoji:"🔧",color:"#D85A30"},"Pneumatiky":{emoji:"🔘",color:"#7F77DD"},"Pojištění":{emoji:"🛡",color:"#1D9E75"},"STK":{emoji:"📋",color:"#639922"},"Dálniční známka":{emoji:"🛣",color:"#BA7517"},"Mytí":{emoji:"🫧",color:"#D4537E"},"Parkování":{emoji:"🅿",color:"#888780"},"Ostatní":{emoji:"📋",color:"#5DCAA5"}};
 
 function loadState(){try{return JSON.parse(localStorage.getItem('app_state')||'null');}catch(e){return null;}}
 function saveState(){try{localStorage.setItem('app_state',JSON.stringify(appState));}catch(e){}}
@@ -389,16 +399,23 @@ function buildDetailHtml(entries){
   }).join('');
 }
 
-function makeExpandRows(key,label,sp,dist,entries){
+function makeExpandRows(key,label,entries,dist){
+  const sp=entries.reduce((a,e)=>a+e.amount,0);
+  const fuel=entries.filter(e=>e.cat==='Tankování').reduce((a,e)=>a+e.amount,0);
+  const other=sp-fuel;
+  const fpk=dist>0?fuel/dist:null;
+  const opk=dist>0?other/dist:null;
   const cpk=dist>0?sp/dist:null;
   const isOpen=!!expandedRows[key];
   return`<tr class="data-row" onclick="toggleExpandRow('${key}')">
     <td>${label}</td>
     <td><button class="expand-btn"><span class="expand-arrow${isOpen?' open':''}" id="arr-${key}">▶</span>&nbsp;${fmt(sp)}</button></td>
     <td>${dist>0?dist.toLocaleString('cs-CZ')+' km':'—'}</td>
+    <td style="color:var(--t2)">${fpk?fmtK(fpk):'—'}</td>
+    <td style="color:var(--t2)">${opk?fmtK(opk):'—'}</td>
     <td style="font-weight:500">${cpk?fmtK(cpk):'—'}</td>
   </tr>
-  <tr class="detail-row"><td colspan="4"><div class="detail-inner${isOpen?' open':''}" id="det-${key}"><div class="detail-list">${buildDetailHtml(entries)}</div></div></td></tr>`;
+  <tr class="detail-row"><td colspan="6"><div class="detail-inner${isOpen?' open':''}" id="det-${key}"><div class="detail-list">${buildDetailHtml(entries)}</div></div></td></tr>`;
 }
 
 function renderNaklady(){
@@ -431,14 +448,14 @@ function renderNaklady(){
   data.forEach(e=>{const k=e.date.slice(0,7);mm[k]=(mm[k]||0)+e.amount;});
   for(let i=1;i<kd.length;i++){const p=kd[i-1],c=kd[i];kmm[c.date.slice(0,7)]=(kmm[c.date.slice(0,7)]||0)+(c.km-p.km);}
   document.getElementById('km-monthly-body').innerHTML=Object.keys(mm).sort().reverse().map(k=>
-    makeExpandRows('m_'+k, new Date(k+'-01').toLocaleDateString('cs-CZ',{month:'long',year:'numeric'}), mm[k]||0, kmm[k]||0, data.filter(e=>e.date.startsWith(k)))
+    makeExpandRows('m_'+k, new Date(k+'-01').toLocaleDateString('cs-CZ',{month:'long',year:'numeric'}), data.filter(e=>e.date.startsWith(k)), kmm[k]||0)
   ).join('');
 
   const ym={},ykm={};
   data.forEach(e=>{const y=e.date.slice(0,4);ym[y]=(ym[y]||0)+e.amount;});
   for(let i=1;i<kd.length;i++){const p=kd[i-1],c=kd[i];ykm[c.date.slice(0,4)]=(ykm[c.date.slice(0,4)]||0)+(c.km-p.km);}
   document.getElementById('km-yearly-body').innerHTML=Object.keys(ym).sort().reverse().map(y=>
-    makeExpandRows('y_'+y, y, ym[y]||0, ykm[y]||0, data.filter(e=>e.date.startsWith(y)))
+    makeExpandRows('y_'+y, y, data.filter(e=>e.date.startsWith(y)), ykm[y]||0)
   ).join('');
 }
 
@@ -485,6 +502,31 @@ function saveAuto(){
   getCar().info={name:document.getElementById('s-name').value.trim(),year:parseInt(document.getElementById('s-year').value)||null,price:parseInt(document.getElementById('s-price').value)||null,buydate:document.getElementById('s-buydate').value||null,kmstart:document.getElementById('s-kmstart').value!==''?parseInt(document.getElementById('s-kmstart').value):null};
   saveState();renderCarSelect();
   const msg=document.getElementById('auto-msg');msg.style.color='#1B5E20';msg.textContent='Uloženo!';setTimeout(()=>{msg.textContent='';},2000);
+}
+
+function exportData(){
+  const blob=new Blob([JSON.stringify(appState,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='auto-vydaje-zaloha-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();URL.revokeObjectURL(a.href);
+}
+
+function importData(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const parsed=JSON.parse(ev.target.result);
+      if(!parsed.cars||!parsed.activeCar)throw new Error('Neplatný formát zálohy');
+      if(!confirm('Import přepíše všechna stávající data. Pokračovat?')){e.target.value='';return;}
+      appState=parsed;saveState();
+      expandedRows={};destroyCharts();renderCarSelect();showTab('prehled');
+      alert('Import proběhl úspěšně!');
+    }catch(err){alert('Chyba při importu: '+err.message);}
+    e.target.value='';
+  };
+  reader.readAsText(file);
 }
 
 document.getElementById('f-date').value=new Date().toISOString().slice(0,10);
